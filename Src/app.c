@@ -32,7 +32,6 @@
 #define APP_MAX_TEMPERATURE				(60U)
 #define APP_MAX_TURBINE_RPM				(6000U)
 #define APP_PID_ALLOWED_ERR_TIME		(200U)
-#define APP_DEBUG_MODE
 
 // Application public variables
 // =----------------------------------------------------------------------------
@@ -426,10 +425,10 @@ void app_ErrorReport(void)
 		APP_ErrorCode &= ~APP_ERROR_PID;
 
 	// Check GNSS module timeout
-	if (GNSS_Timeout > APP_GNSS_TIMEOUT)
-		APP_ErrorCode |= APP_ERROR_GPS;
-	else
+	if (GNSS_Status.rxSerialOk)
 		APP_ErrorCode &= ~APP_ERROR_GPS;
+	else
+		APP_ErrorCode |= APP_ERROR_GPS;
 
 	// Check temperature
 	if (PowerBoard.Status.Temp >= (APP_MAX_TEMPERATURE * 10))
@@ -496,20 +495,18 @@ void app_SelectDose(void)
  */
 void app_MachineSpeed(void)
 {
-#ifdef APP_DEBUG_MODE
-	if (!APP_SimuMode)
-		if ((GNSS_Rmc.mode == GNSS_RMC_MODE_A) | (GNSS_Rmc.mode == GNSS_RMC_MODE_D) | (GNSS_Rmc.mode == GNSS_RMC_MODE_E))
-			APP_Speed = (GNSS_Rmc.speed) / 10;
-		else
-			APP_Speed = 0;
-	else
+	// Simulation Mode
+	if (APP_SimuMode)
+	{
 		APP_Speed = APP_SimuSpeed;
-#else
+		return;
+	}
+
+	// GPS Mode
 	if ((GNSS_Rmc.mode == GNSS_RMC_MODE_A) | (GNSS_Rmc.mode == GNSS_RMC_MODE_D) | (GNSS_Rmc.mode == GNSS_RMC_MODE_E))
 		APP_Speed = (GNSS_Rmc.speed) / 10;
 	else
 		APP_Speed = 0;
-#endif
 }
 
 /**
