@@ -36,8 +36,6 @@ GUI_FTX100Info_t FTX100_InfoScreen;
 GUI_FTX100Version_t FTX100_VersionScreen;
 GUI_INX100Debug_t INX100_DebugScreen;
 
-// ----------------------------------------------------------------------------
-
 /**
  * ----------------------------------------------------------------------------
  * @brief		Initialization of the graphical components
@@ -295,4 +293,10 @@ void GUI_Update(void)
 
 	// Run all input boxes
 	GUI_InputBox(GUI_InputBox_DefaultPointer);
+
+	// Set configuration in progress flag
+	if ((ListBox_Config.priv.status == GUI_STATUS_ENABLED) || (ListBox_Pid.priv.status == GUI_STATUS_ENABLED))
+		APP_ConfigInProgress = true;
+	else
+		APP_ConfigInProgress = false;
 }

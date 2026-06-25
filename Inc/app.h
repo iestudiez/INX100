@@ -2,13 +2,13 @@
  ******************************************************************************
  * @file        : app.h
  * @author      : Estudiez, Ivan
- * @brief       : User Application
- * @date        : 04/11/2024
- * @version     : 1.0
+ * @brief       : User Application (Fertilizer-Incorporator)
+ * @date        : 24/06/2026
+ * @version     : 1.1
  ******************************************************************************
- *
- *
- *
+ *	(24/06/2026)
+ *	Add: Update parameters only when configuration is in progress
+ *	Add: app_PowerLed() routine
  *
  *
  ******************************************************************************
@@ -47,6 +47,7 @@ extern bool APP_CalibStart;
 extern bool APP_CalibDone;
 extern bool APP_SimuMode;
 extern bool APP_WorkingPosition;
+extern bool APP_ConfigInProgress;
 // ----------------------------------------------------------------------------
 extern uint8_t APP_NumNozzles;
 extern uint8_t APP_CalibSelectedPreset;

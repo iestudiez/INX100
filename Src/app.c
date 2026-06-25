@@ -2,13 +2,13 @@
  ******************************************************************************
  * @file        : app.c
  * @author      : Estudiez, Ivan
- * @brief       : User Application
- * @date        : 04/11/2024
- * @version     : 1.0
+ * @brief       : User Application (Fertilizer-Incorporator)
+ * @date        : 24/06/2026
+ * @version     : 1.1
  ******************************************************************************
- *
- *
- *
+ *	(24/06/2026)
+ *	Add: Update parameters only when configuration is in progress
+ *	Add: app_PowerLed() routine
  *
  *
  ******************************************************************************
@@ -28,7 +28,7 @@
 // ----------------------------------------------------------------------------
 #define APP_EEPROM_CONFIG_PAGE			(8U)
 #define APP_EEPROM_BUFF_SIZE			(32U)
-#define APP_DISPLAY_REFRESH_RATE		(10U)
+#define APP_DISPLAY_REFRESH_RATE		(50U)
 #define APP_MAX_TEMPERATURE				(60U)
 #define APP_MAX_TURBINE_RPM				(6000U)
 #define APP_PID_ALLOWED_ERR_TIME		(200U)
@@ -43,6 +43,7 @@ bool APP_CalibStart = false;
 bool APP_CalibDone = false;
 bool APP_SimuMode = false;
 bool APP_WorkingPosition = false;
+bool APP_ConfigInProgress = false;
 // ---------------------------
 uint8_t APP_ErrorCode = 0;
 uint8_t APP_NumNozzles;
@@ -99,6 +100,8 @@ void app_MachineSpeed(void);
 void app_RpmSetpoint(void);
 void app_SelectDose(void);
 void app_DigInputInit(void);
+void app_PowerLed(void);
+void app_EmaFilter(uint32_t input, uint32_t *output, uint16_t alpha);
 
 /**
  * -----------------------------------------------------------------------------
@@ -142,7 +145,7 @@ void APP_Init(void)
 
 /**
  * -----------------------------------------------------------------------------
- * @brief 	User application task
+ * @brief 	User application task (Fertilizer)
  * -----------------------------------------------------------------------------
  */
 void APP_User(void)
@@ -151,7 +154,8 @@ void APP_User(void)
 	app_IndicatorsUpdate();
 
 	// Update application parameters
-	app_UpdateParameters();
+	if (APP_ConfigInProgress)
+		app_UpdateParameters();
 
 	// Calibration routine
 	// -------------------
@@ -360,19 +364,7 @@ void app_IndicatorsUpdate(void)
 
 	// POWER LED
 	// ---------------------------------------------
-
-	// Automatic/ calibration mode
-	if (APP_AutoMode)
-	{
-		if (APP_EnableMotor)
-			Indicator.Led.Power = LED_BLINK;
-		else
-			Indicator.Led.Power = LED_ON;
-	}
-	else if (APP_CalibStart)
-		Indicator.Led.Power = LED_BLINK;
-	else
-		Indicator.Led.Power = LED_OFF;
+	app_PowerLed();
 
 	// MESSAGE LED
 	// ---------------------------------------------
@@ -413,6 +405,30 @@ void app_IndicatorsUpdate(void)
 
 /**
  * -----------------------------------------------------------------------------
+ * @brief 	Power LED management
+ * -----------------------------------------------------------------------------
+ */
+void app_PowerLed(void)
+{
+	// Automatic mode
+	if (APP_AutoMode)
+	{
+		if (APP_EnableMotor)
+			Indicator.Led.Power = LED_BLINK;
+		else
+			Indicator.Led.Power = LED_ON;
+		return;
+	}
+
+	// Calibration mode
+	if (APP_CalibStart)
+		Indicator.Led.Power = LED_BLINK;
+	else
+		Indicator.Led.Power = LED_OFF;
+}
+
+/**
+ * -----------------------------------------------------------------------------
  * @brief	Set the error code variable
  * -----------------------------------------------------------------------------
  */
@@ -445,11 +461,14 @@ void app_ErrorReport(void)
 void app_DisplayValues(void)
 {
 	static uint8_t refreshRateCnt = 0;
+	static uint32_t averageMotorRpm = 0;
+
+	app_EmaFilter(PowerBoard.Freq[0].Rpm, &averageMotorRpm, 400);
 
 	if (refreshRateCnt == APP_DISPLAY_REFRESH_RATE)
 	{
 		APP_DisplaySpeed = APP_Speed;
-		APP_DisplayMotorRpm = PowerBoard.Freq[0].Rpm / 10;
+		APP_DisplayMotorRpm = averageMotorRpm / 10;
 
 		refreshRateCnt = 0;
 	}
@@ -522,6 +541,24 @@ void app_RpmSetpoint(void)
 		APP_RpmSetpoint = (APP_Speed * APP_Dose * APP_Wingspan) / (app_KQ * 6);
 	else
 		APP_RpmSetpoint = 0;
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * @brief 			Exponential media average filter
+ * -----------------------------------------------------------------------------
+ * @param input
+ * @param output
+ * @param alpha
+ * -----------------------------------------------------------------------------
+ */
+void app_EmaFilter(uint32_t input, uint32_t *output, uint16_t alpha)
+{
+	// Alpha, Max= 1000
+	if (alpha > 1000)
+		alpha = 1000;
+
+	*output = (alpha * input + (1000 - alpha) * (*output)) / 1000;
 }
 
 /**
